@@ -1,12 +1,20 @@
 import './DiaryPage.css'
+import { useNavigate } from 'react-router-dom';
 
 export default function DiaryPage() {
+  const navigate = useNavigate();
+
   return (
       <div className="min-h-[80vh] bg-[#071226] text-white p-6">
         <div className="max-w-6xl mx-auto flex gap-6">
           {/* Left column: calendar */}
           <aside className="w-72 shrink-0">
-            <button className="w-full bg-white text-black rounded-md py-2 px-3 mb-6">+ Add Log</button>
+            <button
+              className="w-full bg-white text-black rounded-md py-2 px-3 mb-6"
+              onClick={() => navigate('/diary/add')}
+            >
+              + Add Log
+            </button>
 
             <div className="text-center text-sm text-gray-300 mb-4"> 
               <button className="px-2">&lt;</button>
