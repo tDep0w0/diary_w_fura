@@ -8,6 +8,7 @@ export default function ChatPage() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [hasStarted, setHasStarted] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
   const messageListRef = useRef(null);
@@ -20,14 +21,16 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
-      if (hasStarted && introRef.current) {
-        const timeout = setTimeout(() => {
-          setIsVisible(false); 
-        }, 600);
+    if (hasStarted && introRef.current) {
+      const timeout = setTimeout(() => {
+        setIsVisible(false);
+        setShowMessages(true); // Hiển thị tin nhắn sau khi intro biến mất
+      }, 600);
 
-        return () => clearTimeout(timeout); 
-      }
+      return () => clearTimeout(timeout);
+    }
   }, [hasStarted]);
+
 
   const handleSend = () => {
     if (message.trim() === '') return;
@@ -51,7 +54,7 @@ export default function ChatPage() {
 
 
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${hasStarted ? 'started' : ''}`}>
       {isVisible && (
         <div
           ref={introRef}
@@ -63,13 +66,18 @@ export default function ChatPage() {
       )}
 
       {/* Message-list */}
-      <div className="chat-message-list" ref={messageListRef}>
-        {messages.map((msg) => (
-          <div key={msg.id} className={`chat-message ${msg.sender}`}>
-            {msg.text}
-          </div>
-        ))}
-      </div>
+      {showMessages && (
+        <div
+          className={`chat-message-list ${showMessages ? 'visible' : ''}`}
+          ref={messageListRef}
+        >
+          {messages.map((msg) => (
+            <div key={msg.id} className={`chat-message ${msg.sender}`}>
+              {msg.text}
+            </div>
+          ))}
+        </div>
+      )}
 
 
       {/* Chat Bar */}

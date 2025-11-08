@@ -4,5 +4,7 @@ body {
   padding: 0;
   font-family: 'Inter', sans-serif; 
   color: white; 
+  height: 100%;
+  overflow: hidden;
 }
 
