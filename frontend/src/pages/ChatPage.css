@@ -38,7 +38,13 @@ p {
 }
 
 .intro-logo {
-  width: 150px;
+  width: 14vw;
+  max-width:160px;
+  height:auto;
+  border-radius:50%;
+  display:block;
+  margin:auto;
+  margin-bottom:10px;
 }
 
 .chat-input {
