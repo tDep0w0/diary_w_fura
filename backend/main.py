@@ -144,7 +144,7 @@ async def add_or_modify_entry(payload: EntryPayLoad):
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
     stream = client.responses.create(
-        model="openai/gpt-5-nano",
+        model="openai/gpt-5",
         input=[
             {
                 "role": "system",
@@ -233,6 +233,39 @@ async def get_today_messages(limit=30):
     return [dict(row) for row in rows]
 
 
+async def token_generator(message):
+    full_response = ""
+
+    try:
+        stream = client.responses.create(
+            model="gpt-5",
+            input=[
+                {
+                    "role": "system",
+                    "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer. Please, unless required, just keep a casual conversation",
+                },
+                {"role": "user", "content": message},
+            ],
+            stream=True,
+        )
+
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                content = event.delta
+                if content:
+                    full_response += content
+                    yield content
+
+    except Exception as e:
+        print(f"OpenAI API Error: {e}")
+        yield f"Error: {e}"
+
+    finally:
+        if full_response:
+            await save_message("assistant", full_response)
+            print("AI response saved")
+
+
 @app.get("/api/chat/{message}")
 async def comment_message(message: str):
     await save_message("user", message)
@@ -250,34 +283,4 @@ async def comment_message(message: str):
         + f"\nuser: {message}"
     )
 
-    async def token_generator():
-        ai_reply = []
-        loop = asyncio.get_event_loop()
-
-        stream = client.responses.create(
-            model="gpt-5-nano",
-            input=[
-                {
-                    "role": "system",
-                    "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer. Please, unless required, just keep a casual conversation",
-                },
-                {"role": "user", "content": full_prompt},
-            ],
-            stream=True,
-        )
-
-        def sync_iter():
-            for event in stream:
-                if event.type == "response.output_text.delta":
-                    yield event.delta
-            yield "[DONE]"
-
-        for chunk in await loop.run_in_executor(None, lambda: list(sync_iter())):
-            if chunk != "[DONE]":
-                ai_reply.append(chunk)
-                yield chunk
-            await asyncio.sleep(0)
-
-        await save_message("assistant", "".join(ai_reply))
-
-    return StreamingResponse(token_generator(), media_type="text/plain")
+    return StreamingResponse(token_generator(full_prompt), media_type="text/plain")
