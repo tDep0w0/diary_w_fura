@@ -35,7 +35,7 @@ async def get_db_connection():
 
 @app.post("/add_entry")
 async def add_entry(entry_text: str):
-    conn = get_db_connection()
+    conn = await get_db_connection()
     conn.execute(
         "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
         (entry_text,),
@@ -45,7 +45,7 @@ async def add_entry(entry_text: str):
 
 
 async def get_latest_entries(n=4):
-    conn = get_db_connection()
+    conn = await get_db_connection()
     rows = conn.execute(
         """
         SELECT entry_date, entry_text, ai_response_text
@@ -60,7 +60,7 @@ async def get_latest_entries(n=4):
 
 @app.post("/comment_journal")
 async def comment_journal():
-    recent_entries = get_latest_entries()
+    recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
         return {"error": "No recent entries found."}
 
@@ -89,7 +89,7 @@ async def comment_journal():
                     final_text += event.delta
                     yield event.delta
                 elif event.type == "response.completed":
-                    conn = get_db_connection()
+                    conn = await get_db_connection()
                     conn.execute(
                         "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
                         (final_text,),
@@ -107,13 +107,8 @@ async def comment_journal():
 # ---------------------Chat---------------------
 
 
-def get_db_connection():
-    conn = sqlite3.connect("diary.db")
-    conn.row_factory = sqlite3.Row
-    return conn
-
 async def save_message(speaker: str, text: str):
-    conn = get_db_connection()
+    conn = await get_db_connection()
     conn.execute(
         "INSERT INTO chat_messages (speaker, message_text, timestamp) VALUES (?, ?, datetime('now'))",
         (speaker, text),
@@ -121,8 +116,9 @@ async def save_message(speaker: str, text: str):
     conn.commit()
     conn.close()
 
+
 async def get_today_messages(limit=30):
-    conn = get_db_connection()
+    conn = await get_db_connection()
     today = datetime.now().strftime("%Y-%m-%d")
     rows = conn.execute(
         """
@@ -136,7 +132,6 @@ async def get_today_messages(limit=30):
     ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
-
 
 
 @app.get("/api/chat/{message}")
@@ -159,9 +154,13 @@ async def comment_message(message: str):
     stream = client.responses.stream(
         model="gpt-5-nano",
         input=[
-            {"role": "system", "content": "You are a caring and emotionally intelligent listener."},
+            {
+                "role": "system",
+                "content": "You are a caring and emotionally intelligent listener.",
+            },
             {"role": "user", "content": full_prompt},
         ],
+        stream=True,
     )
 
     async def token_generator():
@@ -172,13 +171,11 @@ async def comment_message(message: str):
             for event in stream:
                 if event.type == "response.output_text.delta":
                     yield event.delta
-            yield "[DONE]"
 
         for chunk in await loop.run_in_executor(None, lambda: list(sync_iter())):
             if chunk != "[DONE]":
                 ai_reply.append(chunk)
                 yield chunk
-            await asyncio.sleep(0) 
 
         await save_message("assistant", "".join(ai_reply))
 
