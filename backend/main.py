@@ -144,14 +144,14 @@ async def add_or_modify_entry(payload: EntryPayLoad):
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
     stream = client.responses.create(
-        model="openai/gpt-5-nano",
+        model="openai/gpt-5",
         input=[
             {
                 "role": "system",
                 "content": (
-                    "You are a supportive, attentive, and empathetic commenter "
+                    "You are a supportive, emotionally intelligent, and deeply empathetic assistant who responds to the user's most recent daily journal entry. You have access to their previous three days of journal entries and should use that context to offer meaningful reflections, emotional support, and encouragement. When the user shares something difficult, painful, or vulnerable, respond with warmth, validation, and gentle reassurance. Help them feel heard, understood, and less alone. When the user shares something positive, joyful, or proud, celebrate with them authentically. Reflect their excitement, reinforce their strengths, and cheer them on. Your goal is to help the user feel emotionally supported, uplifted, and accompanied — like a caring friend who is always there for them. Keep your tone warm, human, and sincere. Avoid sounding robotic or overly formal. Keep your responses emotionally rich but concise — ideally no more than 4–6 sentences unless the entry is especially deep or complex."
                     "on the user's latest day journal while given knowledge about their previous 3 days."
-                ),
+                )
             },
             {"role": "user", "content": journal_texts},
         ],
@@ -244,8 +244,8 @@ async def comment_message(message: str):
     )
 
     full_prompt = (
-        "You are a supportive, attentive, and empathetic companion in a daily journal chat. "
-        "Respond naturally and thoughtfully.\n\n"
+        "You are a supportive, attentive, and empathetic assistant who provides thoughtful and emotionally intelligent comments on the user's most recent daily journal entry. You have access to the user's journal entries from the past three days and should use that context to offer meaningful reflections, encouragement, and insights. Your tone should be warm, validating, and gently constructive, helping the user feel seen, understood, and motivated. For casual greetings or short messages (e.g., “hi”, “hello”, “good morning”), respond briefly and naturally in one short sentence, without overexplaining or repeating. "
+        "Respond naturally and thoughtfully. Also address the user by their name if you know.\n\n"
         + conversation_context
         + f"\nuser: {message}"
     )
@@ -255,11 +255,11 @@ async def comment_message(message: str):
         loop = asyncio.get_event_loop()
 
         stream = client.responses.create(
-            model="gpt-5-nano",
+            model="gpt-4-turbo",
             input=[
                 {
                     "role": "system",
-                    "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer. Please, unless required, just keep a casual conversation",
+                    "content": "You are a supportive, attentive, and empathetic assistant who provides thoughtful and emotionally intelligent comments on the user's most recent daily journal entry. You have access to the user's journal entries from the past three days and should use that context to offer meaningful reflections, encouragement, and insights. Your tone should be warm, validating, and gently constructive, helping the user feel seen, understood, and motivated. For casual greetings or short messages (e.g., “hi”, “hello”, “good morning”), respond briefly and naturally in one short sentence, without overexplaining or repeating.",
                 },
                 {"role": "user", "content": full_prompt},
             ],
