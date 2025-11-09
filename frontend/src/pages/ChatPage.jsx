@@ -115,7 +115,7 @@ export default function ChatPage() {
               <div key={msg.id} className="chat-message-row bot">
                 <img src={startLogo} alt="Bot Avatar" className="chat-avatar" />
                 <div className="chat-message bot">
-                  {msg.text}
+                  {isLoading && msg.text === "Loading..." ? <LoadingBubble /> : msg.text}
                 </div>
               </div>
             ) : (

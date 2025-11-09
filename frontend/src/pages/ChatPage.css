@@ -12,10 +12,13 @@ p {
 .chat-bar {
   display: flex;
   margin-top: 20px;
+
+  max-width: 70%;
   width: 100%;
-  max-width: 800px;
-  justify-content: center; 
-  margin-top: 50px;
+  padding-left: 40px;
+  padding-right: 40px;
+
+  justify-content: center
 }
 
 .chat-input-wrapper {
@@ -34,12 +37,15 @@ p {
   justify-content: flex-start;
   height: 100vh;
   text-align: center;
-  padding-top: 14vh;
+
+  padding-top: clamp(60px, 14vh, 120px);
+
 }
 
 .intro-logo {
-  width: 14vw;
-  max-width:160px;
+
+  width: clamp(80px, 14vw, 160px);
+
   height:auto;
   border-radius:50%;
   display:block;
@@ -51,7 +57,9 @@ p {
 .chat-input {
   flex: 1;
   padding: 12px 20px; 
-  font-size: 16px; 
+
+  font-size: clamp(14px, 4vw, 16px);
+
   border: none; 
   outline: none; 
   background-color: #1E293B; 
@@ -70,8 +78,10 @@ p {
 }
 
 .chat-send-icon {
-  width: 32px;
-  height: 32px;
+
+  width: clamp(24px, 6vw, 32px);
+  height: clamp(24px, 6vw, 32px);
+
   object-fit: cover;
 }
 
@@ -81,8 +91,12 @@ p {
 }
 
 .chat-message-list {
+
+  max-width: 100%;
   width: 100%;
-  max-width: 800px;
+  padding-left: 16px;
+  padding-right: 16px;
+
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -142,13 +156,17 @@ p {
 
 
 .chat-bar{
-  position:fixed;
-  bottom:240px;
+  position: relative; /* hoặc absolute nếu cần */
+  margin-top: clamp(60px, 40vh, 230px);
+
+  bottom: 30vh;
   width:100%;
   padding:10px;
   box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  transition: top 0.6s ease;
 }
 .chat-bar.at-bottom {
+  top: auto;
   bottom: 30px;  
 }
 
@@ -167,7 +185,6 @@ p {
 }
 
 .chat-avatar {
-  width: 40px;
-  height: 40px;
-
+  width: clamp(28px, 8vw, 40px);
+  height: clamp(28px, 8vw, 40px);
 }
