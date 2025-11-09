@@ -4,6 +4,7 @@ import ChatPage from './pages/ChatPage'
 import DiaryPage from './pages/DiaryPage'
 import AddLogPage from './pages/AddLogPage';
 
+
 import NavBar from './components/NavBar'
 
 export default function App() {
