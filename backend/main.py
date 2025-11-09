@@ -8,7 +8,7 @@ import sqlite3
 from datetime import datetime
 import json
 from fastapi.middleware.cors import CORSMiddleware
-
+import asyncio
 
 
 load_dotenv()
@@ -27,14 +27,14 @@ client = OpenAI(base_url="https://openrouter.ai/api/v1")
 
 
 # ---------------------------FOR DIARY----------------------------
-def get_db_connection():
+async def get_db_connection():
     conn = sqlite3.connect("diary.db")
     conn.row_factory = sqlite3.Row
     return conn
 
 
 @app.post("/add_entry")
-def add_entry(entry_text: str):
+async def add_entry(entry_text: str):
     conn = get_db_connection()
     conn.execute(
         "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
@@ -44,7 +44,7 @@ def add_entry(entry_text: str):
     conn.close()
 
 
-def get_latest_entries(n=4):
+async def get_latest_entries(n=4):
     conn = get_db_connection()
     rows = conn.execute(
         """
@@ -64,7 +64,6 @@ async def comment_journal():
     if len(recent_entries) == 0:
         return {"error": "No recent entries found."}
 
-    # Combine texts for model input
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
     with client.responses.stream(
@@ -83,14 +82,13 @@ async def comment_journal():
 
         final_text = ""
 
-        def token_generator():
+        async def token_generator():
             nonlocal final_text
             for event in stream:
                 if event.type == "response.output_text.delta":
                     final_text += event.delta
                     yield event.delta
                 elif event.type == "response.completed":
-                    # Save the AI’s full comment to DB
                     conn = get_db_connection()
                     conn.execute(
                         "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
@@ -108,75 +106,79 @@ async def comment_journal():
 # ---------------------Chat---------------------
 
 
-def save_message(speaker: str, text: str):
+def get_db_connection():
+    conn = sqlite3.connect("diary.db")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+async def save_message(speaker: str, text: str):
     conn = get_db_connection()
     conn.execute(
-        "INSERT INTO chat_messages (speaker, message_text) VALUES (?, ?)",
+        "INSERT INTO chat_messages (speaker, message_text, timestamp) VALUES (?, ?, datetime('now'))",
         (speaker, text),
     )
     conn.commit()
     conn.close()
 
-
-def get_message(n=20):
+async def get_today_messages(limit=30):
     conn = get_db_connection()
+    today = datetime.now().strftime("%Y-%m-%d")
     rows = conn.execute(
-        "SELECT * FROM chat_messages ORDER BY timestamp DESC LIMIT ?", (n,)
+        """
+        SELECT speaker, message_text
+        FROM chat_messages
+        WHERE DATE(timestamp) = ?
+        ORDER BY timestamp ASC
+        LIMIT ?
+        """,
+        (today, limit),
     ).fetchall()
-    return [dict(row) for row in reversed(rows)]
+    conn.close()
+    return [dict(row) for row in rows]
 
-
-@app.post("/comment_message")
-async def comment_message(message: str):
-    try:
-        recent_entries = get_latest_entries()
-        journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
-    except Exception:
-        journal_texts = ""
-
-    full_text = journal_texts + "\n\n" + message if journal_texts else message
-
-    stream = client.responses.stream(
-        model="openai/gpt-5-nano",
-        input=[
-            {
-                "role": "system",
-                "content": "You are a supportive, attentive, and empathetic commentator on the user's message.",
-            },
-            {"role": "user", "content": full_text},
-        ],
-        stream=True,
-    )
-
-    async def token_generator():
-        for event in stream:
-            if event.type == "response.output_text.delta":
-                yield event.delta  # event.delta contains the incremental token text
-
-        yield "[DONE]"
-
-    return StreamingResponse(token_generator(), media_type="text/plain")
 
 
 @app.get("/api/chat/{message}")
-async def test_comment(message: str):
-    stream = client.responses.create(
+async def comment_message(message: str):
+    await save_message("user", message)
+
+    previous_msgs = await get_today_messages()
+
+    conversation_context = "\n".join(
+        [f"{row['speaker']}: {row['message_text']}" for row in previous_msgs]
+    )
+
+    full_prompt = (
+        "You are a supportive, attentive, and empathetic companion in a daily journal chat. "
+        "Respond naturally and thoughtfully.\n\n"
+        + conversation_context
+        + f"\nuser: {message}"
+    )
+
+    stream = client.responses.stream(
         model="gpt-5-nano",
         input=[
-            {
-                "role": "system",
-                "content": "You are a supportive, attentive and empathetic commentor on the user's message knowing ",
-            },
-            {"role": "user", "content": message},
+            {"role": "system", "content": "You are a caring and emotionally intelligent listener."},
+            {"role": "user", "content": full_prompt},
         ],
-        stream=True,
     )
 
     async def token_generator():
-        for event in stream:
-            if event.type == "response.output_text.delta":
-                yield event.delta  # event.delta contains the incremental token text
+        ai_reply = []
+        loop = asyncio.get_event_loop()
 
-        yield "[DONE]"
+        def sync_iter():
+            for event in stream:
+                if event.type == "response.output_text.delta":
+                    yield event.delta
+            yield "[DONE]"
+
+        for chunk in await loop.run_in_executor(None, lambda: list(sync_iter())):
+            if chunk != "[DONE]":
+                ai_reply.append(chunk)
+                yield chunk
+            await asyncio.sleep(0) 
+
+        await save_message("assistant", "".join(ai_reply))
 
     return StreamingResponse(token_generator(), media_type="text/plain")
