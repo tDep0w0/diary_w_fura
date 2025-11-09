@@ -65,7 +65,7 @@ export default function DiaryPage() {
                 <div className="text-sm text-gray-300">
                   {selectedDate
                     ? selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', weekday: 'long' })
-                    : 'No date selected'}
+                    : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', weekday: 'long' })}
                 </div>
               </div>
 
